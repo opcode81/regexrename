@@ -23,9 +23,10 @@ def titleCaps(s):
     return " - ".join(map(lambda item: capFirstChar(re.sub('[0-9a-zA-ZäöüÄÖÜßéèáà\']+', capitalizeMatch, item)), s.split(" - ")))    
 
 print "\nRegExRename (C) by Dominik Jain\n"
-if len(argv) <= 2:
-    print "%d" % len(argv), argv
-    print " usage: regexrename [options] <mask> <pattern1> [pattern2] ...\n"
+
+def exitWithHelp(exitCode=0):
+    print len(argv), argv
+    print " usage: regexrename [options] <mask> [pattern|option] ...\n"
     print "  mask:     mask with which to filter (may contain the wildcards *,?)"
     print "  options:  -p,-preview      preview only, no renames take place"
     print "            -c,-caps         capitalize all words"
@@ -44,7 +45,11 @@ if len(argv) <= 2:
     print "            \"s\\d\\de(\\d\\d):episode \\1\" will replace 's01e02' with 'episode 02'"
     print "  capitalization takes place after pattern replacement"
     print '  regexrename can be used to move files by prepending a path, e.g. "\A:../"'
-    exit(0)
+    exit(exitCode)
+
+argv = argv[1:]
+if len(argv) < 2:
+    exitWithHelp()
 
 preview = False
 caps = False
@@ -53,33 +58,39 @@ recurse = False
 showAll = False
 ignoreExt = False
 filesOnly = False
-for i in range(1, len(argv)):
-    if not(argv[i][0] == '-'):
-        break
-    if argv[i] in ("-preview", "-p"):
-        preview = True
-    elif argv[i] in ("-caps", "-c"):
-        caps = True
-    elif argv[i] in ("-title", "-t"):
-        title = True
-    elif argv[i] in ("-recurse", "-r"):
-        recurse = True
-    elif argv[i] in ("-showall", "-sa"):
-        showAll = True
-    elif argv[i] in ("-ix", "-ignoreext"):
-        ignoreExt = True
-    elif argv[i] in ("-f", ):
-        filesOnly = True
-    else:
-        print "unknown switch:", argv[i]
-        exit(1)
-filemask = argv[i]
 patterns = []
-for j in range(i+1, len(argv)):
-    p = argv[j].split(":")
-    if len(p) != 2:
-        raise Exception("Not a valid pattern: %s" % str(p))
-    patterns.append(p)
+filemask = None
+for i, arg in enumerate(argv):
+    if ":" in arg:
+        patterns.append(arg)
+    elif arg[:1] == "-":
+        if arg in ("-preview", "-p"):
+            preview = True
+        elif arg in ("-caps", "-c"):
+            caps = True
+        elif arg in ("-title", "-t"):
+            title = True
+        elif arg in ("-recurse", "-r"):
+            recurse = True
+        elif arg in ("-showall", "-sa"):
+            showAll = True
+        elif arg in ("-ix", "-ignoreext"):
+            ignoreExt = True
+        elif arg in ("-f", ):
+            filesOnly = True
+        else:
+            print "ERROR: unknown switch '%s'\n\n", arg
+            exitWithHelp(1)
+    else:
+        if len(patterns) > 0:
+            print "ERROR: invalid argument sequence starting at %s\n\n" % str(argv[i:])
+            exitWithHelp(1)
+        filemask = arg
+if filemask is None:
+    print "ERROR: no filemask specified\n\n"
+    exitWithHelp(1)
+
+patterns = [p.split(":") for p in patterns]
 
 def doReplace(filename, dirpath):
     abspath = os.path.abspath(dirpath)
@@ -130,3 +141,5 @@ else:
         if fnmatch(filename, filemask):
             doReplace(filename, ".")
  
+if preview:
+    print "PREVIEW only. No files were renamed."
