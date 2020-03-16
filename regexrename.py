@@ -40,6 +40,7 @@ def exitWithHelp(exitCode=0):
     print("               old: regular expression to search for")
     print("               new: replacement")
     print("                    $dir is replaced by the name of the dir the file is in")
+    print("                    $idx2 is replaced with the 0-padded (two-digit) index of the file in its folder")
     print("            syntax: http://docs.python.org/lib/re-syntax.html")
     print("            groups can be referenced with \\number, starting with 1, e.g.")
     print("            \"s\\d\\de(\\d\\d):episode \\1\" will replace 's01e02' with 'episode 02'")
@@ -92,7 +93,7 @@ if filemask is None:
 
 patterns = [p.split(":") for p in patterns]
 
-def doReplace(filename, dirpath):
+def doReplace(filename, dirpath, idxInFolder):
     abspath = os.path.abspath(dirpath)
     dirname = os.path.split(abspath)[1]
     
@@ -109,6 +110,7 @@ def doReplace(filename, dirpath):
     for pattern in patterns:
         new_filename = re.sub(pattern[0], pattern[1], new_filename)
     new_filename = new_filename.replace("$dir", dirname)
+    new_filename = new_filename.replace("$idx2", "%02d" % idxInFolder)
     
     # capitalization
     if caps:
@@ -132,14 +134,14 @@ def doReplace(filename, dirpath):
 
 if recurse:
     for dirpath, dirnames, filenames in os.walk("."):
-        for filename in filenames if filesOnly else filenames + dirnames:
+        for idx, filename in enumerate(filenames if filesOnly else filenames + dirnames, start=1):
             if fnmatch(filename, filemask):
-                doReplace(filename, dirpath)
+                doReplace(filename, dirpath, idx)
 else:    
-    for filename in os.listdir("."):
+    for idx, filename in enumerate(os.listdir("."), start=1):
         if filesOnly and os.path.isdir(filename): continue
         if fnmatch(filename, filemask):
-            doReplace(filename, ".")
+            doReplace(filename, ".", idx)
  
 if preview:
     print("PREVIEW only. No files were renamed.")
